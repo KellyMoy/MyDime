@@ -135,6 +135,15 @@ tbody tr:hover{background:var(--bg)}
 .sidebar-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-secondary);padding:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px}
 .sidebar-close:hover{background:var(--pink-light);color:var(--pink)}
 
+/* ── Category toggle ── */
+.cat-toggle{display:flex;gap:8px;margin-bottom:4px}
+.cat-btn{flex:1;padding:10px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.cat-btn.active.food{border-color:var(--success);background:rgba(34,197,94,.12);color:var(--success)}
+.cat-btn.active.other{border-color:var(--pink);background:var(--pink-light);color:var(--pink)}
+.cat-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:99px;vertical-align:middle;margin-left:4px}
+.cat-badge.food{background:rgba(34,197,94,.15);color:var(--success)}
+.cat-badge.other{background:var(--pink-light);color:var(--pink)}
+
 /* ── Dark overrides ── */
 .dark .budget-bar-wrap{background:var(--border)}
 .dark tbody tr:hover{background:rgba(255,255,255,.03)}
@@ -243,6 +252,13 @@ tbody tr:hover{background:var(--bg)}
         <label for="add-amt">How much? ($)</label>
         <input type="number" id="add-amt" placeholder="0.00" step="0.01" min="0.01" required>
       </div>
+      <div class="form-group">
+        <label>Category</label>
+        <div class="cat-toggle">
+          <button type="button" class="cat-btn other active" id="cat-other" onclick="setCategory('other')">Other</button>
+          <button type="button" class="cat-btn food" id="cat-food" onclick="setCategory('food')">Food</button>
+        </div>
+      </div>
       <button type="submit" class="btn btn-pink btn-block">Add Expense</button>
     </form>
   </div>
@@ -267,6 +283,13 @@ tbody tr:hover{background:var(--bg)}
         <label for="edit-date">Date</label>
         <input type="date" id="edit-date" required>
       </div>
+      <div class="form-group">
+        <label>Category</label>
+        <div class="cat-toggle">
+          <button type="button" class="cat-btn other active" id="edit-cat-other" onclick="setEditCategory('other')">Other</button>
+          <button type="button" class="cat-btn food" id="edit-cat-food" onclick="setEditCategory('food')">Food</button>
+        </div>
+      </div>
       <div class="form-actions">
         <button type="button" class="btn btn-outline" onclick="closeEditModal()" style="flex:1">Cancel</button>
         <button type="submit" class="btn btn-pink" style="flex:1">Save Changes</button>
@@ -286,6 +309,18 @@ tbody tr:hover{background:var(--bg)}
       <label>Theme</label>
       <button class="btn btn-outline btn-block" onclick="toggleTheme();closeSidebar()" style="justify-content:center" id="sidebarThemeBtn">Toggle Dark Mode</button>
     </div>
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)">AMA Sync</div>
+      <div class="form-group">
+        <label for="ama-url-input">AMA App URL</label>
+        <input type="url" id="ama-url-input" placeholder="http://localhost:3001" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--bg);font-family:inherit">
+      </div>
+      <div class="form-group">
+        <label for="ama-token-input">Sync Token</label>
+        <input type="password" id="ama-token-input" placeholder="Paste your AMA sync token" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--bg);font-family:inherit">
+      </div>
+      <button class="btn btn-pink btn-block" onclick="saveAMASettings()">Save AMA Settings</button>
+    </div>
   </div>
 </div>
 
@@ -299,6 +334,8 @@ let currentTab = 'dashboard';
 let dashMonth = todayMonth();
 let mvMonth = todayMonth();
 let darkMode = false;
+let addCategory = 'other';
+let editCategory = 'other';
 
 function todayMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
@@ -322,6 +359,7 @@ function monthLabel(ym){
 }
 function fmt(n){return '$'+Number(n).toFixed(2)}
 function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function numId(){return Date.now()}
 
 function monthExpenses(ym){
   return expenses.filter(e=>e.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date));
@@ -401,7 +439,8 @@ function renderDashboard(){
   }
   let html='<table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
   items.forEach(e=>{
-    html+='<tr><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'</td><td class="amt">'+fmt(e.amount)+'</td><td style="text-align:right"><div class="actions-cell"><button class="btn btn-outline btn-sm" onclick="openEdit(\''+e.id+'\')">Edit</button><button class="btn btn-danger btn-sm" onclick="confirmDelete(\''+e.id+'\')">Del</button></div></td></tr>';
+    const cat=e.category||'other';
+    html+='<tr><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'<span class="cat-badge '+cat+'">'+cat+'</span></td><td class="amt">'+fmt(e.amount)+'</td><td style="text-align:right"><div class="actions-cell"><button class="btn btn-outline btn-sm" onclick="openEdit(\''+e.id+'\')">Edit</button><button class="btn btn-danger btn-sm" onclick="confirmDelete(\''+e.id+'\')">Del</button></div></td></tr>';
   });
   html+='</tbody></table>';
   list.innerHTML=html;
@@ -415,9 +454,55 @@ function formatDate(d){
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 
+// ── Category ──
+function setCategory(cat){
+  addCategory=cat;
+  document.getElementById('cat-other').className='cat-btn other'+(cat==='other'?' active':'');
+  document.getElementById('cat-food').className='cat-btn food'+(cat==='food'?' active':'');
+}
+function setEditCategory(cat){
+  editCategory=cat;
+  document.getElementById('edit-cat-other').className='cat-btn other'+(cat==='other'?' active':'');
+  document.getElementById('edit-cat-food').className='cat-btn food'+(cat==='food'?' active':'');
+}
+
+// ── AMA Sync ──
+function getAMAConfig(){
+  return{url:(localStorage.getItem('ama_url')||'').replace(/\/$/,''),token:localStorage.getItem('ama_token')||''};
+}
+function saveAMASettings(){
+  localStorage.setItem('ama_url',(document.getElementById('ama-url-input').value||'').trim());
+  localStorage.setItem('ama_token',(document.getElementById('ama-token-input').value||'').trim());
+  toast('AMA settings saved!');
+  closeSidebar();
+}
+function loadAMASettings(){
+  const{url,token}=getAMAConfig();
+  document.getElementById('ama-url-input').value=url;
+  document.getElementById('ama-token-input').value=token;
+}
+async function syncToAMA(expense){
+  const{url,token}=getAMAConfig();
+  if(!url||!token)return;
+  try{
+    await fetch(url+'/api/sync/expense',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({
+        id:expense.syncId,
+        description:expense.description,
+        amount:expense.amount,
+        date:expense.date,
+        category:expense.category||'other'
+      })
+    });
+  }catch(_){}
+}
+
 // ── Add Modal ──
 function openAddModal(){
   document.getElementById('add-form').reset();
+  setCategory('other');
   document.getElementById('add-desc').focus();
   document.getElementById('add-modal').classList.add('active');
 }
@@ -431,12 +516,15 @@ function handleAdd(e){
   const desc=document.getElementById('add-desc').value.trim();
   const amt=parseFloat(document.getElementById('add-amt').value);
   if(!desc||!amt)return;
-  expenses.push({id:id(),description:desc,amount:amt,date:todayStr()});
+  const expense={id:id(),syncId:numId(),description:desc,amount:amt,date:todayStr(),category:addCategory};
+  expenses.push(expense);
   saveData();
   document.getElementById('add-form').reset();
+  setCategory('other');
   document.getElementById('add-desc').focus();
   toast('Expense added!');
   refreshCurrentView();
+  syncToAMA(expense);
 }
 
 // ── Monthly View ──
@@ -460,7 +548,8 @@ function renderMonthly(){
   }
   let html='<table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
   items.forEach(e=>{
-    html+='<tr><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'</td><td class="amt">'+fmt(e.amount)+'</td></tr>';
+    const cat=e.category||'other';
+    html+='<tr><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'<span class="cat-badge '+cat+'">'+cat+'</span></td><td class="amt">'+fmt(e.amount)+'</td></tr>';
   });
   html+='</tbody></table>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:2px solid var(--border)"><span style="font-size:15px;font-weight:600">Total</span><span style="font-size:20px;font-weight:700">'+fmt(total)+'</span></div>';
@@ -478,6 +567,7 @@ function openEdit(id){
   document.getElementById('edit-desc').value=e.description;
   document.getElementById('edit-amt').value=e.amount;
   document.getElementById('edit-date').value=e.date;
+  setEditCategory(e.category||'other');
   document.getElementById('edit-modal').classList.add('active');
 }
 
@@ -489,16 +579,19 @@ function handleEdit(e){
   e.preventDefault();
   const id=document.getElementById('edit-id').value;
   const idx=expenses.findIndex(x=>x.id===id);if(idx===-1)return;
+  const prev=expenses[idx];
   expenses[idx]={
-    id,
+    ...prev,
     description:document.getElementById('edit-desc').value.trim(),
     amount:parseFloat(document.getElementById('edit-amt').value),
-    date:document.getElementById('edit-date').value
+    date:document.getElementById('edit-date').value,
+    category:editCategory
   };
   saveData();
   closeEditModal();
   refreshCurrentView();
   toast('Expense updated!');
+  if(prev.syncId)syncToAMA(expenses[idx]);
 }
 
 function confirmDelete(id){
@@ -515,7 +608,7 @@ function refreshCurrentView(){
 }
 
 // ── Sidebar ──
-function openSidebar(){document.getElementById('sidebarOverlay').classList.add('active')}
+function openSidebar(){document.getElementById('sidebarOverlay').classList.add('active');loadAMASettings()}
 function closeSidebar(){document.getElementById('sidebarOverlay').classList.remove('active')}
 
 // ── Monthly Budget ──
