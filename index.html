@@ -324,6 +324,7 @@ tbody tr:hover{background:var(--bg)}
         <input type="password" id="ama-token-input" placeholder="Paste your AMA sync token" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--bg);font-family:inherit">
       </div>
       <button class="btn btn-pink btn-block" onclick="saveAMASettings()">Save AMA Settings</button>
+      <button class="btn btn-outline btn-block" onclick="syncAllToAMA()" style="margin-top:8px">Sync All Expenses → AMA</button>
     </div>
   </div>
 </div>
@@ -507,6 +508,28 @@ async function syncToAMA(expense){
   }catch(e){
     toast('⚠ AMA sync error: '+e.message,3500);
   }
+}
+
+async function syncAllToAMA(){
+  const{url,token}=getAMAConfig();
+  if(!url||!token){toast('⚠ Set AMA URL & token first.',3000);return;}
+  // Ensure every expense has a syncId (old records may not have one)
+  let changed=false;
+  expenses.forEach(e=>{if(!e.syncId){e.syncId=Date.now()+Math.floor(Math.random()*10000);changed=true;}});
+  if(changed)saveData();
+  let ok=0,fail=0;
+  for(const e of expenses){
+    try{
+      const res=await fetch(url+'/api/sync/expense',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({id:e.syncId,description:e.description,amount:e.amount,date:e.date||todayStr(),category:e.category||'other'})
+      });
+      if(res.ok)ok++;else fail++;
+    }catch(_){fail++;}
+  }
+  toast(ok+' synced'+(fail?' · '+fail+' failed':'')+'!',3000);
+  closeSidebar();
 }
 
 // ── Add Modal ──
