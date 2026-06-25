@@ -389,10 +389,10 @@ function toggleTheme(){
 
 // ── Toast ──
 let toastTimer;
-function toast(msg){
+function toast(msg,duration){
   const el=document.getElementById('toast');
   el.textContent=msg;el.classList.add('show');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),duration||2200);
 }
 
 // ── Tab Switching ──
@@ -487,9 +487,9 @@ function loadAMASettings(){
 }
 async function syncToAMA(expense){
   const{url,token}=getAMAConfig();
-  if(!url||!token)return;
+  if(!url||!token){toast('⚠ AMA not configured — open sidebar to set URL & token.',3500);return;}
   try{
-    await fetch(url+'/api/sync/expense',{
+    const res=await fetch(url+'/api/sync/expense',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
       body:JSON.stringify({
@@ -500,7 +500,13 @@ async function syncToAMA(expense){
         category:expense.category||'other'
       })
     });
-  }catch(_){}
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      toast('⚠ AMA sync failed: '+(err.error||res.status),3500);
+    }
+  }catch(e){
+    toast('⚠ AMA sync error: '+e.message,3500);
+  }
 }
 
 // ── Add Modal ──
