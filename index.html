@@ -253,6 +253,10 @@ tbody tr:hover{background:var(--bg)}
         <input type="number" id="add-amt" placeholder="0.00" step="0.01" min="0.01" required>
       </div>
       <div class="form-group">
+        <label for="add-date">Date</label>
+        <input type="date" id="add-date" required>
+      </div>
+      <div class="form-group">
         <label>Category</label>
         <div class="cat-toggle">
           <button type="button" class="cat-btn other active" id="cat-other" onclick="setCategory('other')">Other</button>
@@ -437,10 +441,10 @@ function renderDashboard(){
     list.innerHTML='<div class="empty-state"><div class="icon">&#128176;</div><p>No expenses yet this month</p><div class="sub">Tap the + button to add your first one.</div></div>';
     return;
   }
-  let html='<table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+  let html='<table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th></th></tr></thead><tbody>';
   items.forEach(e=>{
     const cat=e.category||'other';
-    html+='<tr><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'<span class="cat-badge '+cat+'">'+cat+'</span></td><td class="amt">'+fmt(e.amount)+'</td><td style="text-align:right"><div class="actions-cell"><button class="btn btn-outline btn-sm" onclick="openEdit(\''+e.id+'\')">Edit</button><button class="btn btn-danger btn-sm" onclick="confirmDelete(\''+e.id+'\')">Del</button></div></td></tr>';
+    html+='<tr onclick="openEdit(\''+e.id+'\')" style="cursor:pointer"><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'<span class="cat-badge '+cat+'">'+cat+'</span></td><td class="amt">'+fmt(e.amount)+'</td><td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();confirmDelete(\''+e.id+'\')">×</button></td></tr>';
   });
   html+='</tbody></table>';
   list.innerHTML=html;
@@ -502,6 +506,7 @@ async function syncToAMA(expense){
 // ── Add Modal ──
 function openAddModal(){
   document.getElementById('add-form').reset();
+  document.getElementById('add-date').value=todayStr();
   setCategory('other');
   document.getElementById('add-desc').focus();
   document.getElementById('add-modal').classList.add('active');
@@ -516,10 +521,12 @@ function handleAdd(e){
   const desc=document.getElementById('add-desc').value.trim();
   const amt=parseFloat(document.getElementById('add-amt').value);
   if(!desc||!amt)return;
-  const expense={id:id(),syncId:numId(),description:desc,amount:amt,date:todayStr(),category:addCategory};
+  const date=document.getElementById('add-date').value||todayStr();
+  const expense={id:id(),syncId:numId(),description:desc,amount:amt,date,category:addCategory};
   expenses.push(expense);
   saveData();
   document.getElementById('add-form').reset();
+  document.getElementById('add-date').value=todayStr();
   setCategory('other');
   document.getElementById('add-desc').focus();
   toast('Expense added!');
@@ -549,7 +556,7 @@ function renderMonthly(){
   let html='<table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
   items.forEach(e=>{
     const cat=e.category||'other';
-    html+='<tr><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'<span class="cat-badge '+cat+'">'+cat+'</span></td><td class="amt">'+fmt(e.amount)+'</td></tr>';
+    html+='<tr onclick="openEdit(\''+e.id+'\')" style="cursor:pointer"><td>'+formatDate(e.date)+'</td><td>'+esc(e.description)+'<span class="cat-badge '+cat+'">'+cat+'</span></td><td class="amt">'+fmt(e.amount)+'</td></tr>';
   });
   html+='</tbody></table>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:2px solid var(--border)"><span style="font-size:15px;font-weight:600">Total</span><span style="font-size:20px;font-weight:700">'+fmt(total)+'</span></div>';
