@@ -325,6 +325,7 @@ tbody tr:hover{background:var(--bg)}
       </div>
       <button class="btn btn-pink btn-block" onclick="saveAMASettings()">Save AMA Settings</button>
       <button class="btn btn-outline btn-block" onclick="syncAllToAMA()" style="margin-top:8px">Sync All Expenses → AMA</button>
+      <button class="btn btn-pink btn-block" onclick="shareToAMA()" style="margin-top:8px">📤 Share Expenses to AMA</button>
     </div>
   </div>
 </div>
@@ -511,6 +512,29 @@ async function syncToAMA(expense){
   }
 }
 
+async function shareToAMA(){
+  const testFile=new File([''],'t.json',{type:'application/json'});
+  if(!navigator.canShare?.({files:[testFile]})){
+    toast('⚠ File sharing not supported on this browser.',3000);return;
+  }
+  const amaExpenses=expenses.map((e,i)=>({
+    id:e.syncId??Date.now()+i,
+    description:e.description,
+    amount:e.amount,
+    date:e.date,
+    category:e.category,
+    month:e.date.slice(0,7),
+    source:'mydime',
+  }));
+  const data=JSON.stringify({version:1,expenses:amaExpenses});
+  const file=new File([data],'mydime-expenses.json',{type:'application/json'});
+  try{
+    await navigator.share({files:[file],title:'myDime Expenses'});
+  }catch(err){
+    if(err.name!=='AbortError')toast('⚠ Share failed: '+err.message,3000);
+  }
+}
+
 async function syncAllToAMA(){
   const{url,token}=getAMAConfig();
   if(!url||!token){toast('⚠ Set AMA URL & token first.',3000);return;}
@@ -648,7 +672,8 @@ function confirmDelete(id){
       fetch(url+'/api/sync/expense/'+exp.syncId,{
         method:'DELETE',
         headers:{'Authorization':'Bearer '+token}
-      }).catch(()=>{});
+      }).then(r=>{if(!r.ok)toast('⚠ AMA delete failed: HTTP '+r.status,3000)})
+        .catch(e=>toast('⚠ AMA delete error: '+e.message,3000));
     }
   }
 }
