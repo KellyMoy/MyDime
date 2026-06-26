@@ -359,7 +359,8 @@ function saveData(){
 
 // ── Helpers ──
 function monthLabel(ym){
-  const d=new Date(ym+'-01');
+  const[y,m]=ym.split('-');
+  const d=new Date(parseInt(y),parseInt(m)-1,1);
   return d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
 }
 function fmt(n){return '$'+Number(n).toFixed(2)}
@@ -517,7 +518,7 @@ async function syncAllToAMA(){
   let changed=false;
   expenses.forEach(e=>{if(!e.syncId){e.syncId=Date.now()+Math.floor(Math.random()*10000);changed=true;}});
   if(changed)saveData();
-  let ok=0,fail=0;
+  let ok=0,fail=0,firstErr='';
   for(const e of expenses){
     try{
       const res=await fetch(url+'/api/sync/expense',{
@@ -525,10 +526,14 @@ async function syncAllToAMA(){
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({id:e.syncId,description:e.description,amount:e.amount,date:e.date||todayStr(),category:e.category||'other'})
       });
-      if(res.ok)ok++;else fail++;
-    }catch(_){fail++;}
+      if(res.ok){ok++;}else{
+        fail++;
+        if(!firstErr){const j=await res.json().catch(()=>({}));firstErr=j.error||('HTTP '+res.status);}
+      }
+    }catch(e){fail++;if(!firstErr)firstErr=e.message;}
   }
-  toast(ok+' synced'+(fail?' · '+fail+' failed':'')+'!',3000);
+  const msg=ok+' synced'+(fail?' · '+fail+' failed'+(firstErr?' ('+firstErr+')':''):'')+'!';
+  toast(msg,4000);
   closeSidebar();
 }
 
@@ -632,10 +637,20 @@ function handleEdit(e){
 
 function confirmDelete(id){
   if(!confirm('Delete this expense?'))return;
+  const exp=expenses.find(e=>e.id===id);
   expenses=expenses.filter(e=>e.id!==id);
   saveData();
   refreshCurrentView();
   toast('Expense deleted.');
+  if(exp&&exp.syncId){
+    const{url,token}=getAMAConfig();
+    if(url&&token){
+      fetch(url+'/api/sync/expense/'+exp.syncId,{
+        method:'DELETE',
+        headers:{'Authorization':'Bearer '+token}
+      }).catch(()=>{});
+    }
+  }
 }
 
 function refreshCurrentView(){
