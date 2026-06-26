@@ -160,17 +160,17 @@
 <h1>Phone Preview</h1>
 <div class="phones">
 
-  <!-- AMA: screenshot (local only — deploy to Vercel to make live) -->
+  <!-- AMA: live iframe (requires AMA running on localhost:3001) -->
   <div class="phone-unit">
     <span class="phone-label ama">AMA</span>
     <div class="phone">
       <div class="screen">
-        <img src="ama-screenshot.png" alt="AMA dashboard">
+        <iframe src="http://localhost:3001/dashboard" title="AMA dashboard"></iframe>
       </div>
       <div class="notch"></div>
     </div>
-    <div class="app-name ama">A<span>MA</span></div>
-    <div class="app-desc">Apartment budget tracker with calendar, expense rings, and savings goals.</div>
+    <div class="app-name ama"><span class="live-dot" style="background:#C9962E"></span>A<span>MA</span></div>
+    <div class="app-desc">Budget stats, rent tracker, quick-add expenses, and savings goals.</div>
     <span class="badge ama">localhost:3001</span>
   </div>
 
